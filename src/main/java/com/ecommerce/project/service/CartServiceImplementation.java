@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
@@ -41,7 +42,7 @@ public class CartServiceImplementation implements CartService{
         Cart cart = createCart();
 
         Product product = productRepository.findById(productId).orElseThrow(()->new ResourceNotFoundException("Product","productId",productId));
-        CartItem cartItem = cartItemRepository.findCartItemByProductIdAndCartId(cart.getCardId(),productId);
+        CartItem cartItem = cartItemRepository.findCartItemByProductIdAndCartId(cart.getCartId(),productId);
 
         if(cartItem != null){
             throw new APIException("Product " + product.getProductName() + " already exists in the cart");
@@ -80,6 +81,29 @@ public class CartServiceImplementation implements CartService{
 
         return cartDTO;
     }
+
+    @Override
+    public List<CartDTO> getAllCarts() {
+        List<Cart> carts = cartRepository.findAll();
+
+        if (carts.isEmpty()) {
+            throw new APIException("No carts exist");
+        }
+
+        List<CartDTO> cartDTOS = carts.stream().map(cart -> {
+
+            CartDTO cartDTO = modelMapper.map(cart, CartDTO.class);
+
+            List<ProductDTO> products = cart.getCartItems().stream().map(p -> modelMapper.map(p.getProduct(), ProductDTO.class)).collect(Collectors.toList());
+
+            cartDTO.setProducts(products);
+
+            return cartDTO;
+        }).toList();
+
+        return cartDTOS;
+    }
+
 
     private Cart createCart() {
         Cart userCart = cartRepository.findCartByEmail(authUtil.loggedInEmail());
